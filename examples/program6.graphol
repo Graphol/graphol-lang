@@ -1,0 +1,23 @@
+if (= 3 6){
+      echo "Isto é falso"
+ } (> 4 5) {
+      echo "Isto não é verdade"
+ } else {
+      echo "Na verdade, sem verdades por aqui..."
+}
+
+if (!(= 3 6)){
+      echo "Em programação, a negação de uma mentira é uma verdade!"
+ } (< 4 5) {
+      echo "E isto também é verdade"
+ } else {
+      echo "Já por aqui, só verdades..."
+}
+
+if (x| (= 6 6) (= 3 6) ) {
+      echo "Ou uma coisa ou outra!"
+ } (x| (= 6 6) (= 3 3) ) {
+      echo "As duas, nem pensar!"
+ } (x| (= 6 3) (= 3 6) ) {
+      echo "Nenhuma, muito menos!"
+ }

@@ -1,0 +1,38 @@
+stdout "console"
+foo {
+    echo "FOO"
+    echo "FOOO"
+    echo "FOOOO"
+    echo "FOOOOO"
+    echo "FOOOOOO"
+    echo "FOOOOOOO"
+    echo "FOOOOOOOO"
+    echo "FOOOOOOOOO"
+
+}
+
+bar {
+    echo "BAR"
+    echo "BARR"
+    echo "BARRR"
+    echo "BARRRR"
+    echo "BARRRRR"
+    echo "BARRRRRR"
+    echo "BARRRRRRR"
+    echo "BARRRRRRRR"
+}
+
+baz {
+    echo "BAZ"
+    echo "BZZZ"
+    echo "BAZZZ"
+    echo "BAZZZZ"
+    echo "BAZZZZZ"
+    echo "BAZZZZZZ"
+    echo "BAZZZZZZZ"
+    echo "BAZZZZZZZZ"
+}
+
+foo async run
+bar async run
+baz run

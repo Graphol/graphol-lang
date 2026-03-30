@@ -1,0 +1,8 @@
+dobra {
+   x inbox
+   echo "o dobro é:" (x * 2)
+}
+
+nome (input "Qual o seu nome?")
+numero 0 (input "Olá" nome ", diga um número.")
+dobra numero run
