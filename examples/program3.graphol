@@ -4,5 +4,5 @@ dobra {
 }
 
 nome (input "Qual o seu nome?")
-numero 0 (input "Olá" nome ", diga um número.")
+numero 0 (input "Olá " nome ", diga um número.")
 dobra numero run

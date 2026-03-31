@@ -150,7 +150,7 @@ impl GrapholObject for InputCommand {
     }
 
     fn get_type(&self) -> &'static str {
-        "command"
+        "input"
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -16,14 +16,6 @@ pub struct VmError {
     message: String,
 }
 
-impl VmError {
-    fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
-}
-
 impl Display for VmError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.message)
@@ -152,24 +144,34 @@ impl Vm {
     }
 
     fn eval_expression(&mut self, expr: &Expr, scope: &ScopeRef) -> Result<ObjectRef, VmError> {
-        let mut receiver: Option<ObjectRef> = None;
+        if expr.nodes.is_empty() {
+            let result = new_node();
+            end_object(&result);
+            return Ok(result);
+        }
 
-        for (i, node) in expr.nodes.iter().enumerate() {
-            if i == 0 {
-                receiver = Some(self.eval_root(node, scope)?);
-            } else {
+        let receiver = self.eval_root(&expr.nodes[0], scope)?;
+        let message_nodes = &expr.nodes[1..];
+        let is_input_receiver = receiver.borrow().get_type() == "input";
+
+        if is_input_receiver {
+            if !message_nodes.is_empty() {
+                let mut prompt = String::new();
+                for node in message_nodes {
+                    let message = self.eval_message(node, scope)?;
+                    prompt.push_str(&message.as_text());
+                }
+                receive_object(&receiver, Value::Text(prompt), self);
+            }
+        } else {
+            for node in message_nodes {
                 let message = self.eval_message(node, scope)?;
-                let current = receiver
-                    .as_ref()
-                    .ok_or_else(|| VmError::new("Invalid expression: missing receiver"))?
-                    .clone();
-                receive_object(&current, message, self);
+                receive_object(&receiver, message, self);
             }
         }
 
-        let result = receiver.unwrap_or_else(new_node);
-        end_object(&result);
-        Ok(result)
+        end_object(&receiver);
+        Ok(receiver)
     }
 
     fn eval_root(&mut self, node: &NodeExpr, scope: &ScopeRef) -> Result<ObjectRef, VmError> {
