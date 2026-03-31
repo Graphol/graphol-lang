@@ -1,4 +1,4 @@
-use graphol_rs::source_loader::{load_entry_source, resolve_source};
+use graphol::source_loader::{load_entry_source, resolve_source};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};

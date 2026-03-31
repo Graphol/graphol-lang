@@ -1,5 +1,5 @@
-use graphol_rs::runtime::{OutputMode, RuntimeIo, TestIo};
-use graphol_rs::{run_graphol, run_graphol_file};
+use graphol::runtime::{OutputMode, RuntimeIo, TestIo};
+use graphol::{run_graphol, run_graphol_file};
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::fs;

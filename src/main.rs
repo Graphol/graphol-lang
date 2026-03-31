@@ -4,8 +4,8 @@ use std::io::{self, Read};
 mod cli;
 
 use cli::{compile_file, parse_cli_args};
-use graphol_rs::runtime::StdIo;
-use graphol_rs::{run_graphol, run_graphol_file};
+use graphol::runtime::StdIo;
+use graphol::{run_graphol, run_graphol_file};
 
 fn main() {
     if let Err(err) = run() {

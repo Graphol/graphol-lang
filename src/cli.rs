@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use graphol_rs::parser::parse_program;
-use graphol_rs::source_loader::load_entry_source;
+use graphol::parser::parse_program;
+use graphol::source_loader::load_entry_source;
 
 #[derive(Debug, Default)]
 pub struct CliOptions {
@@ -91,7 +91,7 @@ fn find_runtime_artifacts() -> io::Result<(PathBuf, PathBuf)> {
         ));
     }
 
-    let plain_rlib = exe_dir.join("libgraphol_rs.rlib");
+    let plain_rlib = exe_dir.join("libgraphol.rlib");
     if plain_rlib.exists() {
         return Ok((plain_rlib, deps_path));
     }
@@ -101,7 +101,7 @@ fn find_runtime_artifacts() -> io::Result<(PathBuf, PathBuf)> {
         let entry = entry?;
         let path = entry.path();
         if let Some(name) = path.file_name().and_then(|file| file.to_str()) {
-            if name.starts_with("libgraphol_rs-") && name.ends_with(".rlib") {
+            if name.starts_with("libgraphol-") && name.ends_with(".rlib") {
                 hashed_rlibs.push(path);
             }
         }
@@ -129,7 +129,7 @@ fn compile_runner(
         .arg("-o")
         .arg(output)
         .arg("--extern")
-        .arg(format!("graphol_rs={}", rlib_path.display()))
+        .arg(format!("graphol={}", rlib_path.display()))
         .arg("-L")
         .arg(format!("dependency={}", deps_path.display()))
         .output()?;
@@ -161,11 +161,11 @@ fn write_runner_source(runner_source: &str) -> io::Result<PathBuf> {
 fn build_runner_source(source: &str) -> String {
     let source_literal = string_literal(source);
     format!(
-        r#"use graphol_rs::runtime::StdIo;
+        r#"use graphol::runtime::StdIo;
 
 fn main() {{
     const SOURCE: &str = {source_literal};
-    if let Err(err) = graphol_rs::run_graphol(SOURCE, Box::new(StdIo)) {{
+    if let Err(err) = graphol::run_graphol(SOURCE, Box::new(StdIo)) {{
         eprintln!("error: {{:?}}", err);
         std::process::exit(1);
     }}

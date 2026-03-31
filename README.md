@@ -8,7 +8,7 @@ Use this section as a quick reference for day-to-day usage.
 
 ### 1. Build the Graphol tool itself
 
-This builds `graphol-rs` (the CLI that can interpret `.graphol` files and also generate executables):
+This builds `graphol` (the CLI that can interpret `.graphol` files and also generate executables):
 
 ```bash
 cargo build
@@ -17,35 +17,35 @@ cargo build
 Binary path after build:
 
 ```bash
-./target/debug/graphol-rs
+./target/debug/graphol
 ```
 
 ### 2. Run a `.graphol` program in interpreter mode (no `-o`)
 
-In this mode, `graphol-rs` reads and executes the source file directly:
+In this mode, `graphol` reads and executes the source file directly:
 
 ```bash
-./target/debug/graphol-rs examples/program5.graphol
+./target/debug/graphol examples/program5.graphol
 ```
 
 You can also pipe source through stdin:
 
 ```bash
-cat examples/program5.graphol | ./target/debug/graphol-rs
+cat examples/program5.graphol | ./target/debug/graphol
 ```
 
 ### 3. Compile a `.graphol` program to a Linux executable (`-o` / `--output`)
 
-In this mode, `graphol-rs` generates a standalone Linux executable for the provided Graphol source:
+In this mode, `graphol` generates a standalone Linux executable for the provided Graphol source:
 
 ```bash
-./target/debug/graphol-rs examples/program5.graphol -o program5
+./target/debug/graphol examples/program5.graphol -o program5
 ```
 
 Equivalent long flag:
 
 ```bash
-./target/debug/graphol-rs examples/program5.graphol --output program5
+./target/debug/graphol examples/program5.graphol --output program5
 ```
 
 Run the generated executable:
@@ -56,18 +56,18 @@ Run the generated executable:
 
 ### 4. Use a directory as input (defaults to `main.graphol`)
 
-If the input path is a directory, `graphol-rs` automatically uses `<directory>/main.graphol` as the entry file.
+If the input path is a directory, `graphol` automatically uses `<directory>/main.graphol` as the entry file.
 
 Run in interpreter mode:
 
 ```bash
-./target/debug/graphol-rs examples
+./target/debug/graphol examples
 ```
 
 Compile from directory entry:
 
 ```bash
-./target/debug/graphol-rs examples -o program_from_examples
+./target/debug/graphol examples -o program_from_examples
 ```
 
 ### Difference between using `-o/--output` or not
@@ -129,7 +129,7 @@ Graphol is now a Rust implementation of a small message-passing language runtime
 
 ### Root files
 
-- `Cargo.toml`: crate `graphol-rs`, edition 2024, no external dependencies.
+- `Cargo.toml`: crate `graphol`, edition 2024, no external dependencies.
 - `Cargo.lock`: lockfile with only the local package.
 - `.gitignore`: ignores `nbproject` folders and `target`.
 - `README.md`: legacy JS documentation; does not represent current Rust architecture.
