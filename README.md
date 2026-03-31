@@ -1,3 +1,64 @@
+# Graphol — Towards a New Language
+
+Graphol is a Graph Oriented Language, with the compiler/interpreter written in Rust.
+
+## Build and Run (Interpreter vs Compiled Binary)
+
+Use this section as a quick reference for day-to-day usage.
+
+### 1. Build the Graphol tool itself
+
+This builds `graphol-rs` (the CLI that can interpret `.graphol` files and also generate executables):
+
+```bash
+cargo build
+```
+
+Binary path after build:
+
+```bash
+./target/debug/graphol-rs
+```
+
+### 2. Run a `.graphol` program in interpreter mode (no `-o`)
+
+In this mode, `graphol-rs` reads and executes the source file directly:
+
+```bash
+./target/debug/graphol-rs examples/program5.graphol
+```
+
+You can also pipe source through stdin:
+
+```bash
+cat examples/program5.graphol | ./target/debug/graphol-rs
+```
+
+### 3. Compile a `.graphol` program to a Linux executable (`-o` / `--output`)
+
+In this mode, `graphol-rs` generates a standalone Linux executable for the provided Graphol source:
+
+```bash
+./target/debug/graphol-rs examples/program5.graphol -o program5
+```
+
+Equivalent long flag:
+
+```bash
+./target/debug/graphol-rs examples/program5.graphol --output program5
+```
+
+Run the generated executable:
+
+```bash
+./program5
+```
+
+### Difference between using `-o/--output` or not
+
+- Without `-o/--output`: runs as an interpreter immediately and does not create a new executable file.
+- With `-o/--output`: compiles the `.graphol` source into a native Linux executable at the specified output path, which you run directly later.
+
 # Graphol Rust Codebase Summary
 
 ## Scope of this analysis
