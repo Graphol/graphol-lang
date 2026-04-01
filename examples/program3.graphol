@@ -1,3 +1,12 @@
+// An expression is formed by a node followed, optionally, by one or more: NODE1 NODE2 NODE3 ... NODEN
+// This means that NODE1 will receive the following nodes as messages and will process them individually.
+// Eventually, a node is formed by an expression inside parentheses. In this case, internally the same rule applies: the first node receives the following messages
+// A string node, when receiving another string node, is concatenated.
+// By default, a numeric node, when receiving another numeric node, is summed
+// The first received message determines whether the node will be numeric or text.
+// node1 "2" 2 -> "22"
+// node2 2 "2" -> 4
+
 double {
    x inbox
    echo "the double is:" (x * 2)

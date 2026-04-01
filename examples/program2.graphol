@@ -1,5 +1,17 @@
+// A number, just like an operator, is also a node. One can be passed as a message to the other and vice versa.
+// If a number receives an operator as a message, it changes its default operation, which in the previous example we saw is addition.
+// The expression (8 * 2 2 - 2) is evaluated as follows:
+
+// - 8 receives * changing its default operation to multiplication.
+// - it receives 2, changing its value to 16;
+// - it receives 2, changing its value to 32; and
+// - it receives 2, changing its value to 30;
+
+// Likewise, an operator can itself receive a sequence of nodes:
+// (* 2 2 2) returns 6.
+
 echo (2 + 2)
-echo (+ 3 3) 
+echo (+ 3 3)
 echo (+ 2 3 4)
 echo (8 + 3 4 - 1 2)
 echo (8 * 2 / 4)
