@@ -197,6 +197,35 @@ double number run
 }
 
 #[test]
+fn executes_while_loop_with_re_evaluated_condition() {
+    let source = r#"
+i 0
+
+while (< i 10) {
+  echo i
+  i (+ i 1)
+}
+"#;
+
+    let stdout = compile_and_run(source, &[], &[]);
+    assert_eq!(output_lines(&stdout), vec!["0", "1", "3", "7"]);
+}
+
+#[test]
+fn skips_while_body_when_condition_is_false() {
+    let source = r#"
+i 10
+
+while (< i 10) {
+  echo "should not print"
+}
+"#;
+
+    let stdout = compile_and_run(source, &[], &[]);
+    assert!(output_lines(&stdout).is_empty());
+}
+
+#[test]
 fn executes_program_with_include_from_file() {
     let main = "include \"program3.graphol\"\n\ndouble 44 run\n";
     let program3 = "double {\n   x inbox\n   echo \"the double is:\" (x * 2)\n}\n\nname (input \"What is your name?\")\nnumber 0 (input \"Hello \" name \", tell me a number.\")\ndouble number run\n";
