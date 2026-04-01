@@ -55,14 +55,32 @@ pub fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> io::Result<Cl
     let input = input.ok_or_else(|| {
         io::Error::new(io::ErrorKind::InvalidInput, "missing input .graphol file")
     })?;
-    let output = output.ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "missing required option: -o/--output <executable>",
-        )
-    })?;
+    let output = match output {
+        Some(path) => path,
+        None => derive_default_output_name(&input)?,
+    };
 
     Ok(CliOptions { input, output })
+}
+
+fn derive_default_output_name(input: &Path) -> io::Result<PathBuf> {
+    if input.is_dir() {
+        return Ok(PathBuf::from("main"));
+    }
+
+    input
+        .file_stem()
+        .filter(|stem| !stem.is_empty())
+        .map(PathBuf::from)
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!(
+                    "could not derive output name from input path '{}'",
+                    input.display()
+                ),
+            )
+        })
 }
 
 pub fn compile_file(input: &Path, output: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -97,9 +115,20 @@ mod tests {
     }
 
     #[test]
-    fn input_requires_output_option() {
-        let error = parse_cli_args([OsString::from("examples/program5.graphol")])
-            .expect_err("missing output should fail");
-        assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
+    fn derives_output_name_from_graphol_file_when_missing_output_option() {
+        let options = parse_cli_args([OsString::from("examples/program5.graphol")])
+            .expect("input-only args should be valid");
+
+        assert_eq!(options.input, PathBuf::from("examples/program5.graphol"));
+        assert_eq!(options.output, PathBuf::from("program5"));
+    }
+
+    #[test]
+    fn derives_main_output_name_for_directory_input_when_missing_output_option() {
+        let options = parse_cli_args([OsString::from("examples/")])
+            .expect("directory input should derive main output");
+
+        assert_eq!(options.input, PathBuf::from("examples/"));
+        assert_eq!(options.output, PathBuf::from("main"));
     }
 }

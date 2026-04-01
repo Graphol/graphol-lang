@@ -7,6 +7,7 @@ Contents
     - [1. Build the Graphol tool itself](#1-build-the-graphol-tool-itself)
     - [2. Compile a `.graphol` program to a Linux executable (`-o` / `--output`)](#2-compile-a-graphol-program-to-a-linux-executable--o--output)
     - [3. Use a directory as input (defaults to `main.graphol`)](#3-use-a-directory-as-input-defaults-to-maingraphol)
+    - [4. Output name behavior (`-o` / `--output` is optional)](#4-output-name-behavior--o--output-is-optional)
 - [History Summary](#history-summary)
 
 ## General Information
@@ -60,6 +61,13 @@ Compile from directory entry:
 ```bash
 graphol examples -o program_from_examples
 ```
+
+#### 4. Output name behavior (`-o` / `--output` is optional)
+
+The `-o` / `--output` flag is optional:
+
+- With `-o/--output`: compiles the `.graphol` source into a native Linux executable at the specified output path, which you run directly later.
+- Without `-o/--output`: compiles the `.graphol` deriving the output name from the input and saving in the current path.
 
 ## History Summary
 
