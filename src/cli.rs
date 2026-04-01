@@ -1,14 +1,8 @@
-use std::env;
 use std::ffi::OsString;
-use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::runtime_artifacts::find_runtime_artifacts;
-use graphol::parser::parse_program;
-use graphol::source_loader::load_entry_source;
+use graphol::compile_entry_to_binary;
 
 #[derive(Debug, Default)]
 pub struct CliOptions {
@@ -72,94 +66,13 @@ pub fn parse_cli_args(args: impl IntoIterator<Item = OsString>) -> io::Result<Cl
 }
 
 pub fn compile_file(input: &Path, output: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let source = load_entry_source(input)?;
-    parse_program(&source)?;
-
-    let (rlib_path, deps_path) = find_runtime_artifacts()?;
-    let runner_source = build_runner_source(&source);
-    let runner_path = write_runner_source(&runner_source)?;
-    let compile_result = compile_runner(&runner_path, output, &rlib_path, deps_path.as_deref());
-    let _ = fs::remove_file(&runner_path);
-    compile_result?;
-
+    compile_entry_to_binary(input, output)?;
     Ok(())
-}
-
-fn compile_runner(
-    runner_path: &Path,
-    output: &Path,
-    rlib_path: &Path,
-    deps_path: Option<&Path>,
-) -> io::Result<()> {
-    let mut command = Command::new("rustc");
-    command
-        .arg("--edition=2024")
-        .arg(runner_path)
-        .arg("-o")
-        .arg(output)
-        .arg("--extern")
-        .arg(format!("graphol={}", rlib_path.display()));
-    if let Some(deps_path) = deps_path {
-        command
-            .arg("-L")
-            .arg(format!("dependency={}", deps_path.display()));
-    }
-    let output = command.output()?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let message = if stderr.trim().is_empty() {
-            "rustc failed to compile generated runner".to_string()
-        } else {
-            format!("rustc failed: {}", stderr.trim())
-        };
-        Err(io::Error::other(message))
-    }
-}
-
-fn write_runner_source(runner_source: &str) -> io::Result<PathBuf> {
-    let now_ns = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(io::Error::other)?
-        .as_nanos();
-    let file_name = format!("graphol_runner_{}_{}.rs", std::process::id(), now_ns);
-    let path = env::temp_dir().join(file_name);
-    fs::write(&path, runner_source)?;
-    Ok(path)
-}
-
-fn build_runner_source(source: &str) -> String {
-    let source_literal = string_literal(source);
-    format!(
-        r#"use graphol::runtime::StdIo;
-
-fn main() {{
-    const SOURCE: &str = {source_literal};
-    if let Err(err) = graphol::run_graphol(SOURCE, Box::new(StdIo)) {{
-        eprintln!("error: {{:?}}", err);
-        std::process::exit(1);
-    }}
-}}
-"#
-    )
-}
-
-fn string_literal(input: &str) -> String {
-    for hash_count in 1..=32 {
-        let hashes = "#".repeat(hash_count);
-        let terminator = format!("\"{}", hashes);
-        if !input.contains(&terminator) {
-            return format!("r{hashes}\"{input}\"{hashes}");
-        }
-    }
-    format!("{:?}", input)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_cli_args, string_literal};
+    use super::parse_cli_args;
     use std::ffi::OsString;
     use std::path::PathBuf;
 
@@ -188,12 +101,5 @@ mod tests {
         let error = parse_cli_args([OsString::from("examples/program5.graphol")])
             .expect_err("missing output should fail");
         assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
-    }
-
-    #[test]
-    fn creates_valid_raw_string_literal() {
-        let literal = string_literal("value with \"quote\" and \"### terminator");
-        assert!(literal.starts_with("r"));
-        assert!(literal.contains("value with \"quote\""));
     }
 }

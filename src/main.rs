@@ -1,7 +1,6 @@
 use std::env;
 
 mod cli;
-mod runtime_artifacts;
 
 use cli::{compile_file, parse_cli_args};
 
