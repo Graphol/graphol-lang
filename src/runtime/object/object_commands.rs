@@ -45,6 +45,13 @@ pub fn new_if() -> ObjectRef {
     })
 }
 
+pub fn new_while() -> ObjectRef {
+    object_ref(WhileCommand {
+        cond: None,
+        state: 0,
+    })
+}
+
 pub fn new_message_run() -> ObjectRef {
     object_ref(MessageObject {
         kind: MessageKind::Run,
@@ -242,6 +249,41 @@ impl GrapholObject for IfCommand {
 
     fn get_type(&self) -> &'static str {
         "command"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+struct WhileCommand {
+    cond: Option<Value>,
+    state: u8,
+}
+
+impl GrapholObject for WhileCommand {
+    fn receive(&mut self, value: Value, host: &mut dyn ExecutionHost) {
+        if self.state == 0 {
+            self.cond = Some(value);
+            self.state = 1;
+            return;
+        }
+
+        self.state = 0;
+        if self.cond.as_ref().map(Value::as_bool).unwrap_or(false) {
+            if let Value::Obj(obj) = value {
+                exec_object(&obj, host);
+            }
+        }
+    }
+
+    fn end(&mut self) {
+        self.cond = None;
+        self.state = 0;
+    }
+
+    fn get_type(&self) -> &'static str {
+        "whileCommand"
     }
 
     fn as_any(&self) -> &dyn Any {
