@@ -39,9 +39,9 @@ pub fn generate_rust_source(program: &ProgramIr) -> String {
     out.push_str("fn main() {\n");
     out.push_str("    let program = build_program();\n");
     out.push_str(
-        "    let mut vm = runtime::RuntimeEngine::new(program, Box::new(runtime::StdIo));\n",
+        "    let mut rt = runtime::RuntimeEngine::new(program, Box::new(runtime::StdIo));\n",
     );
-    out.push_str("    if let Err(err) = vm.run() {\n");
+    out.push_str("    if let Err(err) = rt.run() {\n");
     out.push_str("        eprintln!(\"error: {}\", err);\n");
     out.push_str("        std::process::exit(1);\n");
     out.push_str("    }\n");
