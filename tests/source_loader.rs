@@ -72,6 +72,28 @@ fn include_keyword_is_reserved() {
     assert!(error.message.contains("reserved keyword"));
 }
 
+#[test]
+fn strips_line_comments_from_source() {
+    let resolved = resolve_source(
+        "// this whole line is a comment\ndouble 12 run // trailing comment\n",
+        Some(Path::new(".")),
+    )
+    .expect("comments should be stripped");
+
+    assert_eq!(resolved, "double 12 run\n");
+}
+
+#[test]
+fn ignores_include_keyword_inside_comments() {
+    let resolved = resolve_source(
+        "// include \"missing.graphol\"\nrun // include \"missing.graphol\"\n",
+        Some(Path::new(".")),
+    )
+    .expect("comments should not trigger include parsing");
+
+    assert_eq!(resolved, "run\n");
+}
+
 fn create_temp_dir(name: &str) -> PathBuf {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)

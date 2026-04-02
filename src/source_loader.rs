@@ -107,6 +107,10 @@ impl IncludeResolver {
         let mut out = String::new();
 
         for (line_no, line) in source.lines().enumerate() {
+            let Some(line) = strip_comment(line) else {
+                continue;
+            };
+
             let include_target = match parse_include_directive(line) {
                 Ok(target) => target,
                 Err(message) => {
@@ -155,6 +159,19 @@ impl IncludeResolver {
 
         IncludeError::new(format!("{} at line {}", message, line_no))
     }
+}
+
+fn strip_comment(line: &str) -> Option<&str> {
+    let Some(comment_pos) = line.find("//") else {
+        return Some(line);
+    };
+
+    let code = line[..comment_pos].trim_end();
+    if code.trim().is_empty() {
+        return None;
+    }
+
+    Some(code)
 }
 
 fn parse_include_directive(line: &str) -> Result<Option<String>, String> {
