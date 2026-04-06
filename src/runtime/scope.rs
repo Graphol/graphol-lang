@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use super::object::{
     StdoutState, new_echo, new_if, new_input, new_message_async, new_message_else, new_message_run,
-    new_node, new_stdout,
+    new_node, new_stdout, new_while,
 };
 use super::value::ObjectRef;
 
@@ -25,6 +25,7 @@ impl Scope {
         values.insert("async".to_string(), new_message_async());
         values.insert("if".to_string(), new_if());
         values.insert("else".to_string(), new_message_else());
+        values.insert("while".to_string(), new_while());
 
         Rc::new(RefCell::new(Self { values, parent }))
     }

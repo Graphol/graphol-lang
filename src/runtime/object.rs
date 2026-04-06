@@ -14,7 +14,7 @@ use super::value::{ObjectRef, ScalarValue, Value};
 
 pub use object_commands::{
     new_block, new_echo, new_if, new_input, new_message_async, new_message_else, new_message_run,
-    new_stdout,
+    new_stdout, new_while,
 };
 pub use object_strategies::{
     new_boolean_operator, new_logic_operator, new_node, new_number, new_operator, new_string,
