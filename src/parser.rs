@@ -2,7 +2,8 @@ use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 
 use crate::ast::{
-    ArithmeticOp, BlockLiteral, BooleanOp, Expr, LogicOp, NodeExpr, Program, ReservedToken,
+    ArithmeticOp, BlockLiteral, BooleanOp, ControlOp, Expr, LogicOp, NodeExpr, Program,
+    ReservedToken,
 };
 
 #[derive(Debug, Clone)]
@@ -28,6 +29,7 @@ struct Parser<'a> {
     chars: Vec<char>,
     pos: usize,
     block_counter: usize,
+    loop_depth: usize,
     _source: &'a str,
 }
 
@@ -37,6 +39,7 @@ impl<'a> Parser<'a> {
             chars: source.chars().collect(),
             pos: 0,
             block_counter: 0,
+            loop_depth: 0,
             _source: source,
         }
     }
@@ -81,7 +84,8 @@ impl<'a> Parser<'a> {
             let node = match current {
                 '{' => {
                     self.pos += 1;
-                    NodeExpr::BlockLiteral(self.parse_block()?)
+                    let is_loop_body = self.is_loop_body_block(&nodes);
+                    NodeExpr::BlockLiteral(self.parse_block_with_loop_context(is_loop_body)?)
                 }
                 '(' => {
                     self.pos += 1;
@@ -100,7 +104,9 @@ impl<'a> Parser<'a> {
             self.consume_spaces();
         }
 
-        Ok(Expr { nodes })
+        let expr = Expr { nodes };
+        self.validate_control_flow_expression(&expr)?;
+        Ok(expr)
     }
 
     fn parse_block(&mut self) -> Result<BlockLiteral, ParseError> {
@@ -162,6 +168,81 @@ impl<'a> Parser<'a> {
         Err(self.error("Unclosed string literal"))
     }
 
+    fn parse_block_with_loop_context(
+        &mut self,
+        is_loop_body: bool,
+    ) -> Result<BlockLiteral, ParseError> {
+        if is_loop_body {
+            self.loop_depth += 1;
+        }
+
+        let result = self.parse_block();
+
+        if is_loop_body {
+            self.loop_depth -= 1;
+        }
+
+        result
+    }
+
+    fn is_loop_body_block(&self, nodes: &[NodeExpr]) -> bool {
+        if nodes.len() < 2 {
+            return false;
+        }
+
+        matches!(
+            nodes.first(),
+            Some(NodeExpr::Identifier(name)) if Self::is_loop_keyword(name)
+        )
+    }
+
+    fn is_loop_keyword(name: &str) -> bool {
+        matches!(name, "while" | "for") // while and for loop
+    }
+
+    fn validate_control_flow_expression(&self, expr: &Expr) -> Result<(), ParseError> {
+        let Some(control) = Self::find_control_in_nodes(&expr.nodes) else {
+            return Ok(());
+        };
+
+        let is_standalone = matches!(
+            expr.nodes.as_slice(),
+            [NodeExpr::Reserved(ReservedToken::Control(_))]
+        );
+
+        if !is_standalone {
+            return Err(self.error(&format!(
+                "'{}' must be used as a standalone expression",
+                control.keyword()
+            )));
+        }
+
+        if self.loop_depth == 0 {
+            return Err(self.error(&format!(
+                "'{}' can only be used inside loop body",
+                control.keyword()
+            )));
+        }
+
+        Ok(())
+    }
+
+    fn find_control_in_nodes(nodes: &[NodeExpr]) -> Option<ControlOp> {
+        for node in nodes {
+            match node {
+                NodeExpr::Reserved(ReservedToken::Control(control)) => return Some(*control),
+                NodeExpr::SubExpression(subexpr) => {
+                    if let Some(control) = Self::find_control_in_nodes(&subexpr.nodes) {
+                        return Some(control);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        None
+    }
+
     fn parse_reserved_or_identifier(&mut self) -> Result<NodeExpr, ParseError> {
         if let Some(two_char) = self.peek_two_chars() {
             let reserved = match two_char.as_str() {
@@ -209,7 +290,13 @@ impl<'a> Parser<'a> {
 
         let name: String = self.chars[start..self.pos].iter().collect();
         self.pos -= 1;
-        Ok(NodeExpr::Identifier(name))
+        match name.as_str() {
+            "break" => Ok(NodeExpr::Reserved(ReservedToken::Control(ControlOp::Break))),
+            "continue" => Ok(NodeExpr::Reserved(ReservedToken::Control(
+                ControlOp::Continue,
+            ))),
+            _ => Ok(NodeExpr::Identifier(name)),
+        }
     }
 
     fn is_name_terminator(&self, c: char) -> bool {
