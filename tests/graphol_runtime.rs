@@ -226,6 +226,47 @@ while (< i 10) {
 }
 
 #[test]
+fn breaks_while_immediately() {
+    let source = r#"
+i 0
+
+while (< i 10) {
+  echo i
+  if (= i 3) {
+    break
+  }
+  i (+ i 1)
+}
+"#;
+
+    let stdout = compile_and_run(source, &[], &[]);
+    assert_eq!(output_lines(&stdout), vec!["0", "1", "3"]);
+}
+
+#[test]
+fn continues_while_to_next_iteration_immediately() {
+    let source = r#"
+i 0
+
+while (< i 10) {
+  i (+ i 1)
+  if (< i 5) {
+    continue
+  }
+
+  echo i
+
+  if (> i 6) {
+    break
+  }
+}
+"#;
+
+    let stdout = compile_and_run(source, &[], &[]);
+    assert_eq!(output_lines(&stdout), vec!["7"]);
+}
+
+#[test]
 fn executes_program_with_include_from_file() {
     let main = "include \"program3.graphol\"\n\ndouble 44 run\n";
     let program3 = "double {\n   x inbox\n   echo \"the double is:\" (x * 2)\n}\n\nname (input \"What is your name?\")\nnumber 0 (input \"Hello \" name \", tell me a number.\")\ndouble number run\n";
