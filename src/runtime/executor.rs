@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::ast::{BlockLiteral, Expr, NodeExpr, Program, ReservedToken};
+use crate::ast::{BlockLiteral, ControlOp, Expr, NodeExpr, Program, ReservedToken};
 
 use super::host::ExecutionHost;
 use super::io::{OutputEvent, OutputMode, RuntimeIo};
@@ -14,6 +14,14 @@ use super::value::{ObjectRef, Value};
 #[derive(Debug)]
 pub struct RuntimeError {
     message: String,
+}
+
+impl RuntimeError {
+    fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
 }
 
 impl Display for RuntimeError {
@@ -34,6 +42,21 @@ struct Thread {
     frames: Vec<Frame>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LoopControl {
+    Break,
+    Continue,
+}
+
+impl LoopControl {
+    fn keyword(&self) -> &'static str {
+        match self {
+            Self::Break => "break",
+            Self::Continue => "continue",
+        }
+    }
+}
+
 pub struct RuntimeEngine {
     program: Program,
     stdout: StdoutState,
@@ -42,6 +65,8 @@ pub struct RuntimeEngine {
     current_thread: usize,
     active_thread: usize,
     outputs: Vec<OutputEvent>,
+    active_loops: usize,
+    pending_loop_control: Option<LoopControl>,
 }
 
 impl RuntimeEngine {
@@ -54,6 +79,8 @@ impl RuntimeEngine {
             current_thread: 0,
             active_thread: 0,
             outputs: Vec::new(),
+            active_loops: 0,
+            pending_loop_control: None,
         }
     }
 
@@ -61,6 +88,8 @@ impl RuntimeEngine {
         self.threads.clear();
         self.current_thread = 0;
         self.outputs.clear();
+        self.active_loops = 0;
+        self.pending_loop_control = None;
 
         let root_scope = Scope::new(None, self.stdout.clone_ref());
         self.threads.push(Thread {
@@ -150,6 +179,20 @@ impl RuntimeEngine {
             return Ok(result);
         }
 
+        if let Some(control) = Self::control_from_expression(expr) {
+            if self.active_loops == 0 {
+                return Err(RuntimeError::new(format!(
+                    "'{}' can only be used inside while body",
+                    control.keyword()
+                )));
+            }
+
+            self.pending_loop_control = Some(control);
+            let result = new_node();
+            end_object(&result);
+            return Ok(result);
+        }
+
         let receiver = self.eval_root(&expr.nodes[0], scope)?;
         let message_nodes = &expr.nodes[1..];
         let is_while_receiver = receiver.borrow().get_type() == "whileCommand";
@@ -189,21 +232,34 @@ impl RuntimeEngine {
 
         let condition = &message_nodes[0];
         let body = &message_nodes[1];
+        self.active_loops += 1;
 
-        loop {
-            let evaluated_condition = self.eval_message(condition, scope)?;
-            let should_continue = evaluated_condition.as_bool();
-            receive_object(receiver, evaluated_condition, self);
+        let result = (|| -> Result<(), RuntimeError> {
+            loop {
+                let evaluated_condition = self.eval_message(condition, scope)?;
+                let should_continue = evaluated_condition.as_bool();
+                receive_object(receiver, evaluated_condition, self);
 
-            if !should_continue {
-                break;
+                if !should_continue {
+                    break;
+                }
+
+                let evaluated_body = self.eval_message(body, scope)?;
+                receive_object(receiver, evaluated_body, self);
+
+                match self.pending_loop_control.take() {
+                    Some(LoopControl::Break) => break,
+                    Some(LoopControl::Continue) => continue,
+                    None => {}
+                }
             }
 
-            let evaluated_body = self.eval_message(body, scope)?;
-            receive_object(receiver, evaluated_body, self);
-        }
+            Ok(())
+        })();
 
-        Ok(())
+        self.active_loops -= 1;
+
+        result
     }
 
     fn eval_root(&mut self, node: &NodeExpr, scope: &ScopeRef) -> Result<ObjectRef, RuntimeError> {
@@ -224,7 +280,7 @@ impl RuntimeEngine {
             }
             NodeExpr::Reserved(token) => {
                 let node_ref = new_node();
-                let op = reserved_to_object(*token);
+                let op = reserved_to_object(*token)?;
                 receive_object(&node_ref, Value::Obj(op), self);
                 Ok(node_ref)
             }
@@ -239,7 +295,7 @@ impl RuntimeEngine {
                 parse_literal(name).unwrap_or_else(|| Value::Obj(Scope::get(scope, name)))
             }
             NodeExpr::StringLiteral(text) => Value::Text(text.clone()),
-            NodeExpr::Reserved(token) => Value::Obj(reserved_to_object(*token)),
+            NodeExpr::Reserved(token) => Value::Obj(reserved_to_object(*token)?),
             NodeExpr::SubExpression(sub) => Value::Obj(self.eval_expression(sub, scope)?),
             NodeExpr::BlockLiteral(block) => Value::Obj(self.block_to_object(block, scope)),
         };
@@ -248,6 +304,16 @@ impl RuntimeEngine {
 
     fn block_to_object(&self, block: &BlockLiteral, scope: &ScopeRef) -> ObjectRef {
         new_block(block.id, block.expressions.clone(), scope.clone())
+    }
+
+    fn control_from_expression(expr: &Expr) -> Option<LoopControl> {
+        match expr.nodes.as_slice() {
+            [NodeExpr::Reserved(ReservedToken::Control(ControlOp::Break))] => Some(LoopControl::Break),
+            [NodeExpr::Reserved(ReservedToken::Control(ControlOp::Continue))] => {
+                Some(LoopControl::Continue)
+            }
+            _ => None,
+        }
     }
 }
 
@@ -285,15 +351,22 @@ impl ExecutionHost for RuntimeEngine {
             let depth_before = thread.frames.len();
             thread.frames.push(frame);
 
-            while self
-                .threads
-                .get(self.active_thread)
-                .map(|t| t.frames.len() > depth_before)
-                .unwrap_or(false)
+            while self.pending_loop_control.is_none()
+                && self
+                    .threads
+                    .get(self.active_thread)
+                    .map(|t| t.frames.len() > depth_before)
+                    .unwrap_or(false)
             {
                 if self.step_thread(self.active_thread).is_err() {
                     break;
                 }
+            }
+
+            if self.pending_loop_control.is_some()
+                && let Some(active_thread) = self.threads.get_mut(self.active_thread)
+            {
+                active_thread.frames.truncate(depth_before);
             }
         }
     }
@@ -307,10 +380,14 @@ fn parse_literal(token: &str) -> Option<Value> {
     }
 }
 
-fn reserved_to_object(token: ReservedToken) -> ObjectRef {
+fn reserved_to_object(token: ReservedToken) -> Result<ObjectRef, RuntimeError> {
     match token {
-        ReservedToken::Arithmetic(op) => new_operator(op),
-        ReservedToken::Logic(op) => new_logic_operator(op),
-        ReservedToken::Boolean(op) => new_boolean_operator(op),
+        ReservedToken::Arithmetic(op) => Ok(new_operator(op)),
+        ReservedToken::Logic(op) => Ok(new_logic_operator(op)),
+        ReservedToken::Boolean(op) => Ok(new_boolean_operator(op)),
+        ReservedToken::Control(op) => Err(RuntimeError::new(format!(
+            "'{}' must be used as a standalone expression",
+            op.keyword()
+        ))),
     }
 }
